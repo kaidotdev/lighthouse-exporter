@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: lighthouse-exporter
+spec:
+  serviceName: lighthouse-exporter
+  replicas: 1
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: lighthouse-exporter
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/scheme: "http"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+      labels:
+        app: lighthouse-exporter
+    spec:
+      securityContext:
+        sysctls:
+          # https://github.com/kubernetes/kubernetes/pull/54896
+          #- name: net.core.somaxconn
+          #  value: "65535"
+          - name: net.ipv4.ip_local_port_range
+            value: "10000 65535"
+          - name: net.ipv4.tcp_syncookies
+            value: "1"
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: lighthouse-exporter
+      containers:
+        - name: lighthouse-exporter
+          image: docker.pkg.github.com/kaidotorg/workspace/lighthouse-exporter:v1.3.0
+          imagePullPolicy: Always
+          args:
+            - --target=https://httpbin.127.0.0.1.nip.io
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 1
+            successThreshold: 3
+            failureThreshold: 1
+            timeoutSeconds: 1
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "3"]

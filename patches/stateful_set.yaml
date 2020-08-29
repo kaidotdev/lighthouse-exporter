@@ -1,0 +1,13 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: lighthouse-exporter
+spec:
+  template:
+    spec:
+      containers:
+        - name: lighthouse-exporter
+          image: lighthouse-exporter
+          imagePullPolicy: Never
+          args:
+            - --target=https://httpbin.127.0.0.1.nip.io
